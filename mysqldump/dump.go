@@ -11,6 +11,9 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/vicdeo/go-obfuscate/config"
+	"github.com/vicdeo/go-obfuscate/faker"
 )
 
 /*
@@ -26,6 +29,7 @@ type Data struct {
 	Out              io.Writer
 	Connection       *sql.DB
 	IgnoreTables     []string
+	TableConfig      *config.Config
 	MaxAllowedPacket int
 	LockTables       bool
 
@@ -40,10 +44,11 @@ type table struct {
 	Name string
 	Err  error
 
-	cols   []string
-	data   *Data
-	rows   *sql.Rows
-	values []interface{}
+	cols      []string
+	colFakers []faker.FakeGenerator
+	data      *Data
+	rows      *sql.Rows
+	values    []interface{}
 }
 
 type metaData struct {
@@ -261,6 +266,9 @@ func (data *Data) getTables() ([]string, error) {
 }
 
 func (data *Data) isIgnoredTable(name string) bool {
+	if config.ShouldIgnoreTable(name) {
+		return true
+	}
 	for _, item := range data.IgnoreTables {
 		if item == name {
 			return true
@@ -371,14 +379,25 @@ func (table *table) Init() error {
 	}
 
 	var err error
-	table.rows, err = table.data.tx.Query("SELECT " + table.columnsList() + " FROM " + table.NameEsc())
-	if err != nil {
-		return err
+	// TODO: Dirty! Redo
+	if config.ShouldDumpData(table.Name) {
+		table.rows, err = table.data.tx.Query("SELECT " + table.columnsList() + " FROM " + table.NameEsc())
+		if err != nil {
+			return err
+		}
+	} else {
+		table.rows, err = table.data.tx.Query("SELECT " + table.columnsList() + " FROM " + table.NameEsc() + " WHERE FALSE")
 	}
 
 	tt, err := table.rows.ColumnTypes()
 	if err != nil {
 		return err
+	}
+
+	columnNames, _ := table.rows.Columns()
+	table.colFakers = make([]faker.FakeGenerator, len(tt))
+	for i, _ := range tt {
+		table.colFakers[i] = config.GetColumnFaker(table.Name, columnNames[i])
 	}
 
 	table.values = make([]interface{}, len(tt))
@@ -401,14 +420,16 @@ func reflectColumnType(tp *sql.ColumnType) reflect.Type {
 
 	// determine by name
 	switch tp.DatabaseTypeName() {
-	case "BLOB", "BINARY":
+	case "BLOB", "BINARY", "VARBINARY":
 		return reflect.TypeOf(sql.RawBytes{})
-	case "VARCHAR", "TEXT", "DECIMAL", "JSON":
+	case "VARCHAR", "TEXT", "DECIMAL", "JSON", "TIMESTAMP", "DATETIME", "DATE":
 		return reflect.TypeOf(sql.NullString{})
-	case "BIGINT", "TINYINT", "INT":
+	case "BIGINT", "SMALLINT", "TINYINT", "INT":
 		return reflect.TypeOf(sql.NullInt64{})
-	case "DOUBLE":
+	case "DOUBLE", "FLOAT":
 		return reflect.TypeOf(sql.NullFloat64{})
+	default:
+		fmt.Println("Field", tp, " unknown type: ", tp.DatabaseTypeName())
 	}
 
 	// unknown datatype
@@ -418,6 +439,7 @@ func reflectColumnType(tp *sql.ColumnType) reflect.Type {
 func (table *table) Next() bool {
 	if table.rows == nil {
 		if err := table.Init(); err != nil {
+			fmt.Println(err)
 			table.Err = err
 			return false
 		}
@@ -426,9 +448,11 @@ func (table *table) Next() bool {
 	if table.rows.Next() {
 		if err := table.rows.Scan(table.values...); err != nil {
 			table.Err = err
+			fmt.Println(err)
 			return false
 		} else if err := table.rows.Err(); err != nil {
 			table.Err = err
+			fmt.Println(err)
 			return false
 		}
 	} else {
@@ -451,6 +475,15 @@ func (table *table) RowBuffer() *bytes.Buffer {
 		if key != 0 {
 			b.WriteString(",")
 		}
+		// Point of impact
+		if table.colFakers[key] != nil {
+			newValue := table.colFakers[key].GetData()
+			if _, ok := newValue.(string); ok {
+				newValue = strings.Replace(newValue.(string), "'", "\\'", -1)
+			}
+			value = newValue
+		}
+
 		switch s := value.(type) {
 		case nil:
 			b.WriteString(nullType)
