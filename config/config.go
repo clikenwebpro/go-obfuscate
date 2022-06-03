@@ -23,10 +23,6 @@ type OutputConfig struct {
 	Directory      string `yaml:"directory"`
 }
 
-type Table struct {
-	Names string
-}
-
 // Config - global config
 type Config struct {
 	Database *DatabaseConfig        `yaml:"database"`
@@ -44,8 +40,8 @@ var (
 	conf *Config
 )
 
-// ShouldIgnoreTable
-func ShouldIgnoreTable(tableName string) bool {
+// IsIgnoredTable
+func IsIgnoredTable(tableName string) bool {
 	if val, ok := conf.Tables[tableName]; ok {
 		return val == ignoreMarker
 	}
@@ -55,7 +51,7 @@ func ShouldIgnoreTable(tableName string) bool {
 // ShouldDumpData
 func ShouldDumpData(tableName string) bool {
 	if val, ok := conf.Tables[tableName]; ok {
-		return val != truncateMarker && !ShouldIgnoreTable(tableName)
+		return val != truncateMarker && !IsIgnoredTable(tableName)
 	}
 	return false
 }

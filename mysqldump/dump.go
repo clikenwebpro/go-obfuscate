@@ -266,7 +266,7 @@ func (data *Data) getTables() ([]string, error) {
 }
 
 func (data *Data) isIgnoredTable(name string) bool {
-	if config.ShouldIgnoreTable(name) {
+	if config.IsIgnoredTable(name) {
 		return true
 	}
 	for _, item := range data.IgnoreTables {
