@@ -137,7 +137,8 @@ func (ff *FakePhone) GetData() interface{} {
 }
 
 func (ff *FakeEmail) GetData() interface{} {
-	return externalFakeGenerator.Email()
+	// Add more dispersion as email should be unique in some cases
+	return anotherFake.StringWithSize(5) + externalFakeGenerator.Email()
 }
 
 func (ff *FakeCompanyName) GetData() interface{} {
