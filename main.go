@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/vicdeo/go-obfuscate/config"
 	"github.com/vicdeo/go-obfuscate/mysqldump"
@@ -21,6 +22,8 @@ func init() {
 	flag.Parse()
 	fmt.Println(mysqlConfigPath)
 	conf = config.GetConf(mysqlConfigPath)
+	// TODO: validate config
+	os.MkdirAll(conf.Output.Directory, 0777)
 }
 
 func main() {
@@ -32,7 +35,6 @@ func main() {
 	mysqlConfig.Net = "tcp"
 	mysqlConfig.Addr = conf.Database.Hostname + ":" + conf.Database.Port
 
-	dumpDir := conf.Output.Directory // TODO: create if not exists
 	dumpFilenameFormat := fmt.Sprintf(conf.Output.FileNameFormat, mysqlConfig.DBName)
 
 	db, err := sql.Open("mysql", mysqlConfig.FormatDSN())
@@ -42,7 +44,8 @@ func main() {
 	}
 
 	// Register database with mysqldump
-	dumper, err := mysqldump.Register(db, conf, dumpDir, dumpFilenameFormat)
+	//TODO: db & conf is enough
+	dumper, err := mysqldump.Register(db, conf, conf.Output.Directory, dumpFilenameFormat)
 	if err != nil {
 		fmt.Println("Error registering databse:", err)
 		return
