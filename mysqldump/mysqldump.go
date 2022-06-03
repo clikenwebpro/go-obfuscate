@@ -43,6 +43,7 @@ func Register(db *sql.DB, conf *config.Config) (*Data, error) {
 }
 
 // Dump Creates a MYSQL dump from the connection to the stream.
+// Seems to be unused.
 func Dump(db *sql.DB, out io.Writer) error {
 	return (&Data{
 		Connection: db,

@@ -35,10 +35,11 @@ func main() {
 	// Register database with mysqldump
 	dumper, err := mysqldump.Register(db, conf)
 	if err != nil {
-		fmt.Println("Error registering databse:", err)
+		fmt.Println("Error registering database:", err)
 		return
 	}
 
+	// TODO: add to config support of	dumper.LockTables = true
 	// Dump database to file
 	var err2 = dumper.Dump()
 	if err2 != nil {
