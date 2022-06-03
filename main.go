@@ -8,8 +8,6 @@ import (
 
 	"github.com/vicdeo/go-obfuscate/config"
 	"github.com/vicdeo/go-obfuscate/mysqldump"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -28,24 +26,14 @@ func init() {
 
 func main() {
 	// Open connection to database
-	mysqlConfig := mysql.NewConfig()
-	mysqlConfig.User = conf.Database.User
-	mysqlConfig.Passwd = conf.Database.Password
-	mysqlConfig.DBName = conf.Database.DatabaseName
-	mysqlConfig.Net = "tcp"
-	mysqlConfig.Addr = conf.Database.Hostname + ":" + conf.Database.Port
-
-	dumpFilenameFormat := fmt.Sprintf(conf.Output.FileNameFormat, mysqlConfig.DBName)
-
-	db, err := sql.Open("mysql", mysqlConfig.FormatDSN())
+	db, err := sql.Open("mysql", config.GetMysqlConfigDSN())
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		return
 	}
 
 	// Register database with mysqldump
-	//TODO: db & conf is enough
-	dumper, err := mysqldump.Register(db, conf, conf.Output.Directory, dumpFilenameFormat)
+	dumper, err := mysqldump.Register(db, conf)
 	if err != nil {
 		fmt.Println("Error registering databse:", err)
 		return
@@ -57,7 +45,7 @@ func main() {
 		fmt.Println("Error dumping:", err)
 		return
 	}
-	fmt.Printf("File is saved to %s\n", dumpFilenameFormat)
+	fmt.Printf("File is saved to %s\n", config.GeDumpFileNameFormat())
 
 	// Close dumper, connected database and file stream.
 	dumper.Close()

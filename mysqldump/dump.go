@@ -29,7 +29,6 @@ type Data struct {
 	Out              io.Writer
 	Connection       *sql.DB
 	IgnoreTables     []string
-	TableConfig      *config.Config
 	MaxAllowedPacket int
 	LockTables       bool
 

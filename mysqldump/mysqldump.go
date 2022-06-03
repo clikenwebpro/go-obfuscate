@@ -15,16 +15,16 @@ import (
 Register a new dumper.
 
 	db: Database that will be dumped (https://golang.org/pkg/database/sql/#DB).
-	dir: Path to the directory where the dumps will be stored.
-	format: Format to be used to name each dump file. Uses time.Time.Format (https://golang.org/pkg/time/#Time.Format). format appended with '.sql'.
+	conf: config read from the file
 */
-func Register(db *sql.DB, tableConfig *config.Config, dir, format string) (*Data, error) {
-	if !isDir(dir) {
+func Register(db *sql.DB, conf *config.Config) (*Data, error) {
+	if !isDir(conf.Output.Directory) {
 		return nil, errors.New("Invalid directory")
 	}
 
-	name := time.Now().Format(format)
-	p := path.Join(dir, name+".sql")
+	// Uses time.Time.Format (https://golang.org/pkg/time/#Time.Format). format appended with '.sql'.
+	name := time.Now().Format(config.GeDumpFileNameFormat())
+	p := path.Join(conf.Output.Directory, name+".sql")
 
 	// Check dump directory
 	if e, _ := exists(p); e {
@@ -39,9 +39,8 @@ func Register(db *sql.DB, tableConfig *config.Config, dir, format string) (*Data
 	}
 
 	return &Data{
-		Out:         f,
-		Connection:  db,
-		TableConfig: tableConfig,
+		Out:        f,
+		Connection: db,
 	}, nil
 }
 

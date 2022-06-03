@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
 	"github.com/vicdeo/go-obfuscate/faker"
 )
@@ -92,4 +93,19 @@ func GetConf(configPath string) *Config {
 	}
 
 	return conf
+}
+
+// GetDumpFileNameFormat -
+func GeDumpFileNameFormat() string {
+	return fmt.Sprintf(conf.Output.FileNameFormat, conf.Database.DatabaseName)
+}
+
+func GetMysqlConfigDSN() string {
+	mysqlConfig := mysql.NewConfig()
+	mysqlConfig.User = conf.Database.User
+	mysqlConfig.Passwd = conf.Database.Password
+	mysqlConfig.DBName = conf.Database.DatabaseName
+	mysqlConfig.Net = "tcp"
+	mysqlConfig.Addr = conf.Database.Hostname + ":" + conf.Database.Port
+	return mysqlConfig.FormatDSN()
 }
