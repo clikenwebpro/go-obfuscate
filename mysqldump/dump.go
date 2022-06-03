@@ -478,7 +478,8 @@ func (table *table) RowBuffer() *bytes.Buffer {
 		if table.colFakers[key] != nil {
 			newValue := table.colFakers[key].GetData()
 			if _, ok := newValue.(string); ok {
-				newValue = strings.Replace(newValue.(string), "'", "\\'", -1)
+				//newValue = strings.Replace(newValue.(string), "'", "\\'", -1)
+				newValue = sanitize(newValue.(string))
 			}
 			value = newValue
 		}
