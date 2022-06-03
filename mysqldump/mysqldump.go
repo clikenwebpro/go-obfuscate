@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"time"
 
 	"github.com/vicdeo/go-obfuscate/config"
 )
@@ -22,9 +21,8 @@ func Register(db *sql.DB, conf *config.Config) (*Data, error) {
 		return nil, errors.New("Invalid directory")
 	}
 
-	// Uses time.Time.Format (https://golang.org/pkg/time/#Time.Format). format appended with '.sql'.
-	name := time.Now().Format(config.GeDumpFileNameFormat())
-	p := path.Join(conf.Output.Directory, name+".sql")
+	name := config.GetDumpFileName()
+	p := path.Join(conf.Output.Directory, name)
 
 	// Check dump directory
 	if e, _ := exists(p); e {

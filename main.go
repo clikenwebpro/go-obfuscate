@@ -45,7 +45,7 @@ func main() {
 		fmt.Println("Error dumping:", err)
 		return
 	}
-	fmt.Printf("File is saved to %s\n", config.GeDumpFileNameFormat())
+	fmt.Printf("File is saved to %s\n", config.GetDumpFileName())
 
 	// Close dumper, connected database and file stream.
 	dumper.Close()

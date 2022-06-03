@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
@@ -38,7 +39,8 @@ const (
 
 // Create a new Config instance.
 var (
-	conf *Config
+	conf         *Config
+	dumpFileName string
 )
 
 // IsIgnoredTable
@@ -95,9 +97,14 @@ func GetConf(configPath string) *Config {
 	return conf
 }
 
-// GetDumpFileNameFormat -
-func GeDumpFileNameFormat() string {
-	return fmt.Sprintf(conf.Output.FileNameFormat, conf.Database.DatabaseName)
+// GetDumpFileName -
+func GetDumpFileName() string {
+	if dumpFileName == "" {
+		// Uses time.Time.Format (https://golang.org/pkg/time/#Time.Format). format appended with '.sql'.
+		dumpFileName = time.Now().Format(conf.Output.FileNameFormat)
+		dumpFileName = fmt.Sprintf(dumpFileName, conf.Database.DatabaseName) + ".sql"
+	}
+	return dumpFileName
 }
 
 func GetMysqlConfigDSN() string {
