@@ -26,7 +26,7 @@ func init() {
 
 func main() {
 	// Open connection to database
-	db, err := sql.Open("mysql", config.GetMysqlConfigDSN())
+	db, err := sql.Open("mysql", conf.GetMysqlConfigDSN())
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		return
@@ -46,7 +46,7 @@ func main() {
 		fmt.Println("Error dumping:", err)
 		return
 	}
-	fmt.Printf("File is saved to %s\n", config.GetDumpFileName())
+	fmt.Printf("File is saved to %s\n", conf.GetDumpFileName())
 
 	// Close dumper, connected database and file stream.
 	dumper.Close()

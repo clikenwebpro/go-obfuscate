@@ -21,7 +21,7 @@ func Register(db *sql.DB, conf *config.Config) (*Data, error) {
 		return nil, errors.New("Invalid directory")
 	}
 
-	name := config.GetDumpFileName()
+	name := conf.GetDumpFileName()
 	p := path.Join(conf.Output.Directory, name)
 
 	// Check dump directory

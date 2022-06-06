@@ -32,6 +32,11 @@ type Config struct {
 	Tables   map[string]interface{} `yaml:"tables"`
 }
 
+type MainConfig interface {
+	GetDumpFileName() string
+	GetMysqlConfigDSN() string
+}
+
 const (
 	ignoreMarker   = "ignore"
 	truncateMarker = "truncate"
@@ -42,39 +47,6 @@ var (
 	conf         *Config
 	dumpFileName string
 )
-
-// IsIgnoredTable
-func IsIgnoredTable(tableName string) bool {
-	if val, ok := conf.Tables[tableName]; ok {
-		return val == ignoreMarker
-	}
-	return false
-}
-
-// ShouldDumpData
-func ShouldDumpData(tableName string) bool {
-	if val, ok := conf.Tables[tableName]; ok {
-		return val != truncateMarker && !IsIgnoredTable(tableName)
-	}
-	return false
-}
-
-// GetColumnFaker - get a proper data generator
-func GetColumnFaker(tableName, columnName string) faker.FakeGenerator {
-	defer func() {
-		if err := recover(); err != nil {
-
-		}
-	}()
-	if table, ok := conf.Tables[tableName]; ok {
-		tableMap := table.(map[string]interface{})
-		if column, ok := tableMap[columnName]; ok {
-			columnMap := column.(map[string]interface{})
-			return faker.New(columnMap)
-		}
-	}
-	return nil
-}
 
 // GetConf - Read the config file and marshal into the conf Config struct.
 func GetConf(configPath string) *Config {
@@ -97,22 +69,54 @@ func GetConf(configPath string) *Config {
 	return conf
 }
 
-// GetDumpFileName -
-func GetDumpFileName() string {
+// IsIgnoredTable
+func IsIgnoredTable(tableName string) bool {
+	if val, ok := conf.Tables[tableName]; ok {
+		return val == ignoreMarker
+	}
+	return false
+}
+
+// ShouldDumpData
+func ShouldDumpData(tableName string) bool {
+	if val, ok := conf.Tables[tableName]; ok {
+		return val != truncateMarker && !IsIgnoredTable(tableName)
+	}
+	return true
+}
+
+// GetColumnFaker - get a proper data generator
+func GetColumnFaker(tableName, columnName string) faker.FakeGenerator {
+	defer func() {
+		if err := recover(); err != nil {
+
+		}
+	}()
+	if table, ok := conf.Tables[tableName]; ok {
+		tableMap := table.(map[string]interface{})
+		if column, ok := tableMap[columnName]; ok {
+			columnMap := column.(map[string]interface{})
+			return faker.New(columnMap)
+		}
+	}
+	return nil
+}
+
+func (config *Config) GetDumpFileName() string {
 	if dumpFileName == "" {
 		// Uses time.Time.Format (https://golang.org/pkg/time/#Time.Format). format appended with '.sql'.
-		dumpFileName = time.Now().Format(conf.Output.FileNameFormat)
-		dumpFileName = fmt.Sprintf(dumpFileName, conf.Database.DatabaseName) + ".sql"
+		dumpFileName = time.Now().Format(config.Output.FileNameFormat)
+		dumpFileName = fmt.Sprintf(dumpFileName, config.Database.DatabaseName) + ".sql"
 	}
 	return dumpFileName
 }
 
-func GetMysqlConfigDSN() string {
+func (config *Config) GetMysqlConfigDSN() string {
 	mysqlConfig := mysql.NewConfig()
-	mysqlConfig.User = conf.Database.User
-	mysqlConfig.Passwd = conf.Database.Password
-	mysqlConfig.DBName = conf.Database.DatabaseName
+	mysqlConfig.User = config.Database.User
+	mysqlConfig.Passwd = config.Database.Password
+	mysqlConfig.DBName = config.Database.DatabaseName
 	mysqlConfig.Net = "tcp"
-	mysqlConfig.Addr = conf.Database.Hostname + ":" + conf.Database.Port
+	mysqlConfig.Addr = config.Database.Hostname + ":" + config.Database.Port
 	return mysqlConfig.FormatDSN()
 }
