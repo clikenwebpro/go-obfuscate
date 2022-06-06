@@ -2,12 +2,22 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/vicdeo/go-obfuscate/config"
 	"github.com/vicdeo/go-obfuscate/mysqldump"
+)
+
+const (
+	version                    = "0.9.0"
+	errConfigFileNotFound      = 1
+	errConfigFileInvalidMarkUp = 2
+	errOutputDirectoryMissing  = 3
+	errDumpFileIsNotWritable   = 5
 )
 
 var (
@@ -15,13 +25,8 @@ var (
 )
 
 func init() {
-	var mysqlConfigPath string
-	flag.StringVar(&mysqlConfigPath, "c", "./config.yaml", "MySQL connection details(./config.yaml)")
-	flag.Parse()
-	fmt.Println(mysqlConfigPath)
-	conf = config.GetConf(mysqlConfigPath)
-	// TODO: validate config
-	os.MkdirAll(conf.Output.Directory, 0777)
+	loadConfig()
+	prepareFS()
 }
 
 func main() {
@@ -36,7 +41,7 @@ func main() {
 	dumper, err := mysqldump.Register(db, conf)
 	if err != nil {
 		fmt.Println("Error registering database:", err)
-		return
+		os.Exit(errDumpFileIsNotWritable)
 	}
 
 	// TODO: add to config support of	dumper.LockTables = true
@@ -50,4 +55,63 @@ func main() {
 
 	// Close dumper, connected database and file stream.
 	dumper.Close()
+}
+
+func loadConfig() {
+	var configFilePath string
+	var error error
+
+	fmt.Println("go-obfuscate version", version)
+	flag.StringVar(&configFilePath, "c", "./config.yaml", "MySQL connection details(./config.yaml)")
+	flag.Parse()
+	evaledPath, _ := filepath.EvalSymlinks(configFilePath)
+	if _, err := os.Stat(evaledPath); errors.Is(err, os.ErrNotExist) {
+		fmt.Println("Config file does not exist:", configFilePath, "")
+		os.Exit(errConfigFileNotFound)
+	}
+
+	fmt.Println("Using config file:", evaledPath)
+	if conf, error = config.GetConf(filepath.Dir(evaledPath), filepath.Base(evaledPath)); error != nil {
+		fmt.Println("Config file contains invalid YAML markup:")
+		fmt.Printf("%v\n", error)
+		os.Exit(errConfigFileInvalidMarkUp)
+	}
+
+	// TODO: validate config here after loading it
+}
+
+func prepareFS() {
+	// Dump dir exists
+	os.MkdirAll(conf.Output.Directory, 0777)
+	if !isDir(conf.Output.Directory) {
+		fmt.Println("Could not create directory ", conf.Output.Directory)
+		os.Exit(errOutputDirectoryMissing)
+	}
+
+	// Dump file does not exist
+	p := conf.GetDumpFullPath()
+	if e, _ := exists(p); e {
+		// TODO: recoverable error - just add an increasing posfix or whatever
+		fmt.Println("Dump '" + p + "' already exists.")
+	}
+}
+
+func isDir(p string) bool {
+	if e, fi := exists(p); e {
+		return fi.Mode().IsDir()
+	}
+	return false
+}
+
+func exists(p string) (bool, os.FileInfo) {
+	f, err := os.Open(p)
+	if err != nil {
+		return false, nil
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return false, nil
+	}
+	return true, fi
 }

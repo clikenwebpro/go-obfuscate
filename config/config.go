@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
+	"path"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -34,6 +34,7 @@ type Config struct {
 
 type MainConfig interface {
 	GetDumpFileName() string
+	GetDumpFullPath() string
 	GetMysqlConfigDSN() string
 }
 
@@ -49,24 +50,27 @@ var (
 )
 
 // GetConf - Read the config file and marshal into the conf Config struct.
-func GetConf(configPath string) *Config {
-	evaledPath, _ := filepath.EvalSymlinks(configPath)
-	viper.AddConfigPath(filepath.Dir(evaledPath))
-	viper.SetConfigName(filepath.Base(evaledPath))
+func GetConf(configDir, configFileName string) (*Config, error) {
+	defer func() {
+		if err := recover(); err != nil {
+		}
+	}()
+	viper.AddConfigPath(configDir)
+	viper.SetConfigName(configFileName)
 	viper.SetConfigType("yaml")
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		fmt.Printf("%v", err)
+		return nil, err
 	}
 
 	conf = &Config{}
 	err = viper.Unmarshal(conf)
 	if err != nil {
-		fmt.Printf("unable to decode into Config struct, %v", err)
+		return nil, err
 	}
 
-	return conf
+	return conf, nil
 }
 
 // IsIgnoredTable
@@ -100,6 +104,10 @@ func GetColumnFaker(tableName, columnName string) faker.FakeGenerator {
 		}
 	}
 	return nil
+}
+
+func (config *Config) GetDumpFullPath() string {
+	return path.Join(config.Output.Directory, config.GetDumpFileName())
 }
 
 func (config *Config) GetDumpFileName() string {

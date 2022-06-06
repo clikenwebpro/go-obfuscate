@@ -2,10 +2,8 @@ package mysqldump
 
 import (
 	"database/sql"
-	"errors"
 	"io"
 	"os"
-	"path"
 
 	"github.com/vicdeo/go-obfuscate/config"
 )
@@ -17,21 +15,8 @@ Register a new dumper.
 	conf: config read from the file
 */
 func Register(db *sql.DB, conf *config.Config) (*Data, error) {
-	if !isDir(conf.Output.Directory) {
-		return nil, errors.New("Invalid directory")
-	}
-
-	name := conf.GetDumpFileName()
-	p := path.Join(conf.Output.Directory, name)
-
-	// Check dump directory
-	if e, _ := exists(p); e {
-		return nil, errors.New("Dump '" + name + "' already exists.")
-	}
-
 	// Create .sql file
-	f, err := os.Create(p)
-
+	f, err := os.Create(conf.GetDumpFullPath())
 	if err != nil {
 		return nil, err
 	}
@@ -64,24 +49,4 @@ func (d *Data) Close() error {
 		out.Close()
 	}
 	return d.Connection.Close()
-}
-
-func exists(p string) (bool, os.FileInfo) {
-	f, err := os.Open(p)
-	if err != nil {
-		return false, nil
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		return false, nil
-	}
-	return true, fi
-}
-
-func isDir(p string) bool {
-	if e, fi := exists(p); e {
-		return fi.Mode().IsDir()
-	}
-	return false
 }
