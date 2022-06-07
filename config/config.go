@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"path"
 	"time"
 
@@ -10,33 +11,32 @@ import (
 	"github.com/vicdeo/go-obfuscate/faker"
 )
 
-// DatabaseConfig -- Database connection config
-type DatabaseConfig struct {
-	Hostname     string `yaml:"hostname"`
-	Port         string `yaml:"port"`
-	DatabaseName string `yaml:"databaseName"`
-	User         string `yaml:"user"`
-	Password     string `yaml:"password"`
-}
+type (
+	// DatabaseConfig -- Database connection config
+	DatabaseConfig struct {
+		Net          string `yaml:"net,omitempty"`
+		Socket       string `yaml:"socket,omitempty"`
+		Hostname     string `yaml:"hostname,omitempty"`
+		Port         string `yaml:"port,omitempty"`
+		DatabaseName string `yaml:"databaseName,omitempty"`
+		User         string `yaml:"user,omitempty"`
+		Password     string `yaml:"password,omitempty"`
+	}
 
-// OutputConfig -- dump-specific options
-type OutputConfig struct {
-	FileNameFormat string `yaml:"fileNameFormat"`
-	Directory      string `yaml:"directory"`
-}
+	// OutputConfig -- dump-specific options
+	OutputConfig struct {
+		FileNameFormat string `yaml:"fileNameFormat"`
+		Directory      string `yaml:"directory"`
+	}
 
-// Config - global config
-type Config struct {
-	Database *DatabaseConfig        `yaml:"database"`
-	Output   *OutputConfig          `yaml:"output"`
-	Tables   map[string]interface{} `yaml:"tables"`
-}
-
-type MainConfig interface {
-	GetDumpFileName() string
-	GetDumpFullPath() string
-	GetMysqlConfigDSN() string
-}
+	// Config - global config
+	Config struct {
+		Database *DatabaseConfig        `yaml:"database"`
+		Output   *OutputConfig          `yaml:"output"`
+		Tables   map[string]interface{} `yaml:"tables"`
+		clock    func() time.Time
+	}
+)
 
 const (
 	ignoreMarker   = "ignore"
@@ -93,7 +93,6 @@ func ShouldDumpData(tableName string) bool {
 func GetColumnFaker(tableName, columnName string) faker.FakeGenerator {
 	defer func() {
 		if err := recover(); err != nil {
-
 		}
 	}()
 	if table, ok := conf.Tables[tableName]; ok {
@@ -113,18 +112,31 @@ func (config *Config) GetDumpFullPath() string {
 func (config *Config) GetDumpFileName() string {
 	if dumpFileName == "" {
 		// Uses time.Time.Format (https://golang.org/pkg/time/#Time.Format). format appended with '.sql'.
-		dumpFileName = time.Now().Format(config.Output.FileNameFormat)
+		dumpFileName = config.now().Format(config.Output.FileNameFormat)
 		dumpFileName = fmt.Sprintf(dumpFileName, config.Database.DatabaseName) + ".sql"
 	}
 	return dumpFileName
 }
 
-func (config *Config) GetMysqlConfigDSN() string {
+func (config *Config) now() time.Time {
+	if config.clock == nil {
+		return time.Now()
+	}
+	return config.clock()
+}
+
+func (config *DatabaseConfig) GetMysqlConfigDSN() string {
 	mysqlConfig := mysql.NewConfig()
-	mysqlConfig.User = config.Database.User
-	mysqlConfig.Passwd = config.Database.Password
-	mysqlConfig.DBName = config.Database.DatabaseName
-	mysqlConfig.Net = "tcp"
-	mysqlConfig.Addr = config.Database.Hostname + ":" + config.Database.Port
+	mysqlConfig.DBName = config.DatabaseName
+	mysqlConfig.Net = config.Net
+	mysqlConfig.User = config.User
+	mysqlConfig.Passwd = config.Password
+
+	switch config.Net {
+	case "tcp":
+		mysqlConfig.Addr = net.JoinHostPort(config.Hostname, config.Port)
+	case "unix":
+		mysqlConfig.Addr = config.Socket
+	}
 	return mysqlConfig.FormatDSN()
 }

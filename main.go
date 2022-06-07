@@ -17,6 +17,7 @@ const (
 	errConfigFileNotFound      = 1
 	errConfigFileInvalidMarkUp = 2
 	errOutputDirectoryMissing  = 3
+	errDBConnectionFailed      = 4
 	errDumpFileIsNotWritable   = 5
 )
 
@@ -31,10 +32,16 @@ func init() {
 
 func main() {
 	// Open connection to database
-	db, err := sql.Open("mysql", conf.GetMysqlConfigDSN())
+	db, err := sql.Open("mysql", conf.Database.GetMysqlConfigDSN())
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		return
+	}
+
+	err = db.Ping()
+	if err != nil {
+		fmt.Println("Please validate DB credentials.\n", err)
+		os.Exit(errDBConnectionFailed)
 	}
 
 	// Register database with mysqldump

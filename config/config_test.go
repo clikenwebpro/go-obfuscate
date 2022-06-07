@@ -3,63 +3,59 @@ package config
 import (
 	//	"reflect"
 
-	"strings"
 	"testing"
+	"time"
 )
 
 type getDumpFileNamePair struct {
-	fileNameFormat   string
-	databaseName     string
 	expectedFileName string
+	config           Config
 }
 
 var getDumpFileNameTestcases = []getDumpFileNamePair{
-	{"%s-2006-01-02T150405", "black_mamba", "black_mamba"},
+	{
+		"black_mamba-2022-06-01T010203.sql",
+		Config{
+			Output:   &OutputConfig{FileNameFormat: "%s-2006-01-02T150405"},
+			Database: &DatabaseConfig{DatabaseName: "black_mamba"},
+		},
+	},
 }
 
 func TestGetDumpFileName(t *testing.T) {
 	for _, testcase := range getDumpFileNameTestcases {
-		conf := &Config{
-			Output:   &OutputConfig{FileNameFormat: testcase.fileNameFormat},
-			Database: &DatabaseConfig{DatabaseName: testcase.databaseName},
-		}
-		fileName := conf.GetDumpFileName()
 
-		if strings.HasPrefix(fileName, testcase.expectedFileName) == false {
-			t.Error("File name should start with DB name, got ", fileName)
-		}
-		if strings.HasSuffix(fileName, ".sql") == false {
-			t.Error("File name should end with '.sql' suffix, got ", fileName)
+		testcase.config.clock = func() time.Time { return time.Date(2022, 06, 01, 01, 02, 03, 0, time.UTC) }
+		fileName := testcase.config.GetDumpFileName()
+		if testcase.expectedFileName != fileName {
+			t.Error("Expected name is", testcase.expectedFileName, ", got", fileName)
 		}
 	}
 }
 
 type getMysqlConfigDSNPair struct {
-	expectedDSN  string
-	user         string
-	password     string
-	databaseName string
-	hostname     string
-	port         string
+	expectedDSN string
+	config      DatabaseConfig
 }
 
 var getMysqlConfigDSNTestcases = []getMysqlConfigDSNPair{
-	{"dbuser:dbpass@tcp(127.0.0.1:3306)/black_mamba", "dbuser", "dbpass", "black_mamba", "127.0.0.1", "3306"},
+	{
+		"dbuser:dbpass@tcp(127.0.0.1:3306)/black_mamba",
+		DatabaseConfig{Net: "tcp", DatabaseName: "black_mamba", User: "dbuser", Password: "dbpass", Hostname: "127.0.0.1", Port: "3306"},
+	},
+	{
+		"unix(/tmp/mysql.sock)/black_mamba",
+		DatabaseConfig{Net: "unix", DatabaseName: "black_mamba", Socket: "/tmp/mysql.sock"},
+	},
+	{
+		"dbuser:dbpass@unix(/tmp/mysql.sock)/black_mamba",
+		DatabaseConfig{Net: "unix", DatabaseName: "black_mamba", Socket: "/tmp/mysql.sock", User: "dbuser", Password: "dbpass"},
+	},
 }
 
 func TestGetMysqlConfigDSN(t *testing.T) {
 	for _, testcase := range getMysqlConfigDSNTestcases {
-		conf := &Config{
-			Database: &DatabaseConfig{
-				User:         testcase.user,
-				Password:     testcase.password,
-				DatabaseName: testcase.databaseName,
-				Hostname:     testcase.hostname,
-				Port:         testcase.port,
-			},
-		}
-
-		mysqlDSN := conf.GetMysqlConfigDSN()
+		mysqlDSN := testcase.config.GetMysqlConfigDSN()
 		if testcase.expectedDSN != mysqlDSN {
 			t.Error("Expected ", testcase.expectedDSN, " got ", mysqlDSN)
 		}

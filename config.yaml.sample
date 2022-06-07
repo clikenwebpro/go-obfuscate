@@ -1,15 +1,24 @@
 # Mysql connection options
 database:
-  # DB host connect to
-  hostname: "localhost"
   # Db name to create a dump from
   databaseName: "my_database"
+
+  # Sample tcp connection via host:port
+  net: tcp
+  # DB host connect to
+  hostname: "localhost"
   # Mysql user name
   user: "user"
   # Mysql password
   password: "secret"
   # Mysql port
   port: "3306"
+
+  # Sample socket connection via local socket file
+  net: unix
+  socket: /run/mysql/mysql.sock
+  user: "user"
+  password: "password"
 
 # Resulting file options
 output:
