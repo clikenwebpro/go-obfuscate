@@ -83,7 +83,12 @@ func loadConfig() {
 		fmt.Printf("%v\n", error)
 		os.Exit(errConfigFileInvalidMarkUp)
 	}
-
+	fmt.Println("Config parsed. Found tables count:")
+	fmt.Println(" - to dump as is:", len(conf.Tables.Keep))
+	fmt.Println(" - to ignore:", len(conf.Tables.Ignore))
+	fmt.Println(" - to truncate:", len(conf.Tables.Truncate))
+	fmt.Println(" - to obfuscate:", len(conf.Tables.Obfuscate))
+	fmt.Println("Total:", len(conf.Tables.Keep)+len(conf.Tables.Ignore)+len(conf.Tables.Truncate)+len(conf.Tables.Obfuscate))
 	// TODO: validate config here after loading it
 }
 

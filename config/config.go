@@ -29,11 +29,18 @@ type (
 		Directory      string `yaml:"directory"`
 	}
 
+	TableConfig struct {
+		Keep      []string               `yaml:"kept"`
+		Ignore    []string               `yaml:"kept"`
+		Truncate  []string               `yaml:"kept"`
+		Obfuscate map[string]interface{} `yaml:"tables"`
+	}
+
 	// Config - global config
 	Config struct {
-		Database *DatabaseConfig        `yaml:"database"`
-		Output   *OutputConfig          `yaml:"output"`
-		Tables   map[string]interface{} `yaml:"tables"`
+		Database *DatabaseConfig `yaml:"database"`
+		Output   *OutputConfig   `yaml:"output"`
+		Tables   *TableConfig    `yaml:"tables"`
 		clock    func() time.Time
 	}
 )
@@ -75,18 +82,15 @@ func GetConf(configDir, configFileName string) (*Config, error) {
 
 // IsIgnoredTable
 func IsIgnoredTable(tableName string) bool {
-	if val, ok := conf.Tables[tableName]; ok {
-		return val == ignoreMarker
-	}
-	return false
+	return contains(conf.Tables.Ignore, tableName)
 }
 
 // ShouldDumpData
 func ShouldDumpData(tableName string) bool {
-	if val, ok := conf.Tables[tableName]; ok {
-		return val != truncateMarker && !IsIgnoredTable(tableName)
+	if IsIgnoredTable(tableName) {
+		return false
 	}
-	return true
+	return !contains(conf.Tables.Truncate, tableName)
 }
 
 // GetColumnFaker - get a proper data generator
@@ -95,7 +99,7 @@ func GetColumnFaker(tableName, columnName string) faker.FakeGenerator {
 		if err := recover(); err != nil {
 		}
 	}()
-	if table, ok := conf.Tables[tableName]; ok {
+	if table, ok := conf.Tables.Obfuscate[tableName]; ok {
 		tableMap := table.(map[string]interface{})
 		if column, ok := tableMap[columnName]; ok {
 			columnMap := column.(map[string]interface{})
@@ -139,4 +143,13 @@ func (config *DatabaseConfig) GetMysqlConfigDSN() string {
 		mysqlConfig.Addr = config.Socket
 	}
 	return mysqlConfig.FormatDSN()
+}
+
+func contains(haystack []string, needle string) bool {
+	for _, item := range haystack {
+		if item == needle {
+			return true
+		}
+	}
+	return false
 }

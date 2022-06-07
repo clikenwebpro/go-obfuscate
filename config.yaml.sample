@@ -30,80 +30,91 @@ output:
 
 # Table processing options
 tables:
-  # table_name_1 will be ignored and not included into the resulting dump
-  table_name_1: ignore
+  # Tables listed in this section are dumped as is
+  keep:
+    - table_name_to_keep_1
+    - table_name_to_keep_2
+    - table_name_to_keep_3
 
-  # table_name_2 will be dumped without data (recreated via DROP TABLE + CREATE TABLE)
-  table_name_2: truncate
+  # Tables listed in this section are completely excluded from the dump
+  ignore:
+  - table_name_to_ignore_1
+  - table_name_to_ignore_2
+  - table_name_to_ignore_3
 
-  # table_name_3 will be dumped as usual. This spec could be omitted with the same effect
-  table_name_3:
+  # Tables listed in this section are dropped and recreated in the dump to contain no data
+  truncate:
+  - table_name_to_truncate_1
+  - table_name_to_truncate_2
+  - table_name_to_truncate_3
 
-  # Here is an obfuscation in action. Table name is user_data
-  user_data:
-    # Field name is user_first_name - a random first name will be dumped instead of actual data
-    user_first_name:
-      type: first_name
+  # Tables listed in this section are going to have obfuscated data in some fields
+  obfuscate:
+    # Here is an obfuscation in action. Table name is user_data
+    user_data:
+      # Field name is user_first_name - a random first name will be dumped instead of actual data
+      user_first_name:
+        type: first_name
 
-    # Field name is user_last_name - a random last name will be dumped instead of actual data
-    user_last_name:
-      type: last_name
+      # Field name is user_last_name - a random last name will be dumped instead of actual data
+      user_last_name:
+        type: last_name
 
-    # Field name is user_full_name - a random full name will be dumped instead of actual data
-    user_full_name:
-      type: name
+      # Field name is user_full_name - a random full name will be dumped instead of actual data
+      user_full_name:
+        type: name
 
-    # Field name is user_phone - a random phone number name will be dumped instead of actual data
-    user_phone:
-      type: phone
+      # Field name is user_phone - a random phone number name will be dumped instead of actual data
+      user_phone:
+        type: phone
 
-    # Field name is user_email - a random email name will be dumped instead of actual data
-    user_email:
-      type: email
+      # Field name is user_email - a random email name will be dumped instead of actual data
+      user_email:
+        type: email
 
-    # 'pet_name' field in the 'user_data' table will have production data as it has no type specified
-    # The same applies to any unlisted field - it will have a production data inside
-    pet_name:
+      # 'pet_name' field in the 'user_data' table will have production data as it has no type specified
+      # The same applies to any unlisted field - it will have a production data inside
+      pet_name:
 
-  # Obfuscation options for another database table called 'addresses'
-  addresses:
-    zip:
-      type: zip_code
+    # Obfuscation options for another database table called 'addresses'
+    addresses:
+      zip:
+        type: zip_code
 
-    street:
-      type: street_address
+      street:
+        type: street_address
 
-    city:
-      type: city
+      city:
+        type: city
 
-    full_address:
-      type: address
+      full_address:
+        type: address
 
 
-  # Another obfuscated table with the name 'table_name_5'
-  table_name_5:
-    # type:lorem will generate a random sentence and dump it instead of real data
-    secret_question:
-      type: lorem
+    # Another obfuscated table with the name 'table_name_5'
+    table_name_5:
+      # type:lorem will generate a random sentence and dump it instead of real data
+      secret_question:
+        type: lorem
 
-    # type:string will generate a random string of a given length instead of actual data
-    answer_to_secret_question:
-      type: string
-      length: 10
+      # type:string will generate a random string of a given length instead of actual data
+      answer_to_secret_question:
+        type: string
+        length: 10
 
-    # type:fixed means that all dumped entries will have the same user_cc_data value
-    # Also shows how to escape qoutes properly
-    user_cc_data:
-      type: fixed
-      string: "{\"cardNumber\":\"XXXX1234\",\"cardType\":\"VI\",\"cardExpYear\":\"2022\",\"cardExpMonth\":\"2\"}"
+      # type:fixed means that all dumped entries will have the same user_cc_data value
+      # Also shows how to escape qoutes properly
+      user_cc_data:
+        type: fixed
+        string: "{\"cardNumber\":\"XXXX1234\",\"cardType\":\"VI\",\"cardExpYear\":\"2022\",\"cardExpMonth\":\"2\"}"
 
-  # And some more data types in
-  extra_data:
-    company_name:
-      type: company
-    company_website:
-      type: url
-    ceo_primary_ip:
-    	type: ipv4
+    # And some more data types in
+    extra_data:
+      company_name:
+        type: company
+      company_website:
+        type: url
+      ceo_primary_ip:
+      	type: ipv4
 
 # That's all we have so far
