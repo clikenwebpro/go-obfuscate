@@ -145,11 +145,33 @@ func (config *DatabaseConfig) GetMysqlConfigDSN() string {
 	return mysqlConfig.FormatDSN()
 }
 
-func contains(haystack []string, needle string) bool {
-	for _, item := range haystack {
-		if item == needle {
-			return true
+func ValidateConfig() (map[string][]string, bool) {
+	hasErrors := false
+	messages := make(map[string][]string, 0)
+
+	tablesToObfuscate := make([]string, 0)
+	for t, _ := range conf.Tables.Obfuscate {
+		tablesToObfuscate = append(tablesToObfuscate, t)
+	}
+
+	allTables := make([]string, 0)
+	allTables = append(unique(tablesToObfuscate), unique(conf.Tables.Keep)...)
+	allTables = append(allTables, unique(conf.Tables.Ignore)...)
+	allTables = append(allTables, unique(conf.Tables.Truncate)...)
+
+	for sectionTitle, sectionValues := range map[string][]string{
+		"obfuscate": tablesToObfuscate,
+		"keep":      conf.Tables.Keep,
+		"ignore":    conf.Tables.Ignore,
+		"truncate":  conf.Tables.Truncate,
+		"overall":   allTables,
+	} {
+		dupesInSection := duplicatesInSlice(sectionValues)
+		messages[sectionTitle] = dupesInSection
+		if len(dupesInSection) > 0 {
+			hasErrors = true
 		}
 	}
-	return false
+
+	return messages, hasErrors
 }

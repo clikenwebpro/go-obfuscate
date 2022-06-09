@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"html/template"
 	"os"
 	"path/filepath"
 
@@ -19,6 +20,20 @@ const (
 	errOutputDirectoryMissing  = 3
 	errDBConnectionFailed      = 4
 	errDumpFileIsNotWritable   = 5
+	errConfigHasDuplicates     = 6
+
+	statsTemplate = `Config parsed. Found tables count:
+ - to dump as is: {{.keep}}
+ - to ignore: {{.ignore}}
+ - to truncate: {{.truncate}}
+ - to obfuscate: {{.obfuscate}}
+Total: {{.total}}
+`
+
+	validationTemplate = `Checking for duplicated table names...done
+{{range $k, $v := .}}{{if $v}} - {{range $v}}{{.}}{{end}} spotted multiple times in the {{$k}} section
+{{end}}{{end}}
+`
 )
 
 var (
@@ -83,13 +98,28 @@ func loadConfig() {
 		fmt.Printf("%v\n", error)
 		os.Exit(errConfigFileInvalidMarkUp)
 	}
-	fmt.Println("Config parsed. Found tables count:")
-	fmt.Println(" - to dump as is:", len(conf.Tables.Keep))
-	fmt.Println(" - to ignore:", len(conf.Tables.Ignore))
-	fmt.Println(" - to truncate:", len(conf.Tables.Truncate))
-	fmt.Println(" - to obfuscate:", len(conf.Tables.Obfuscate))
-	fmt.Println("Total:", len(conf.Tables.Keep)+len(conf.Tables.Ignore)+len(conf.Tables.Truncate)+len(conf.Tables.Obfuscate))
-	// TODO: validate config here after loading it
+
+	statsTmpl, err := template.New("statistics").Parse(statsTemplate)
+	if err == nil {
+		statsTmpl.Execute(os.Stdout, map[string]int{
+			"keep":      len(conf.Tables.Keep),
+			"ignore":    len(conf.Tables.Ignore),
+			"truncate":  len(conf.Tables.Truncate),
+			"obfuscate": len(conf.Tables.Obfuscate),
+			"total":     len(conf.Tables.Keep) + len(conf.Tables.Ignore) + len(conf.Tables.Truncate) + len(conf.Tables.Obfuscate),
+		})
+	}
+	// Sanity check 1: each table name should be unique across all lists
+	messages, hasErrors := config.ValidateConfig()
+	valTmpl, err := template.New("validation").Parse(validationTemplate)
+	if err == nil {
+		valTmpl.Execute(os.Stdout, messages)
+	}
+	if hasErrors {
+		fmt.Println("Please fix the reported errors before proceeding")
+		os.Exit(errConfigHasDuplicates)
+	}
+	// TODO: revalidate config after DB connection is done to make sure it has the same tables as DB and show missing/extra tables if any
 }
 
 func prepareFS() {
@@ -103,7 +133,7 @@ func prepareFS() {
 	// Dump file does not exist
 	p := conf.GetDumpFullPath()
 	if e, _ := exists(p); e {
-		// TODO: recoverable error - just add an increasing posfix or whatever
+		// TODO: recoverable error - just add an increasing postfix or whatever
 		fmt.Println("Dump '" + p + "' already exists.")
 	}
 }
