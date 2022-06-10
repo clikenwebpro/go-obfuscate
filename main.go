@@ -110,7 +110,7 @@ func loadConfig() {
 		})
 	}
 	// Sanity check 1: each table name should be unique across all lists
-	messages, hasErrors := config.ValidateConfig()
+	messages, hasErrors := conf.ValidateConfig()
 	valTmpl, err := template.New("validation").Parse(validationTemplate)
 	if err == nil {
 		valTmpl.Execute(os.Stdout, messages)

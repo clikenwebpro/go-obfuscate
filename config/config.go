@@ -109,6 +109,37 @@ func GetColumnFaker(tableName, columnName string) faker.FakeGenerator {
 	return nil
 }
 
+func (config *Config) ValidateConfig() (map[string][]string, bool) {
+	hasErrors := false
+	messages := make(map[string][]string, 0)
+
+	tablesToObfuscate := make([]string, 0)
+	for t, _ := range config.Tables.Obfuscate {
+		tablesToObfuscate = append(tablesToObfuscate, t)
+	}
+
+	allTables := make([]string, 0)
+	allTables = append(unique(tablesToObfuscate), unique(config.Tables.Keep)...)
+	allTables = append(allTables, unique(config.Tables.Ignore)...)
+	allTables = append(allTables, unique(config.Tables.Truncate)...)
+
+	for sectionTitle, sectionValues := range map[string][]string{
+		"obfuscate": tablesToObfuscate,
+		"keep":      config.Tables.Keep,
+		"ignore":    config.Tables.Ignore,
+		"truncate":  config.Tables.Truncate,
+		"overall":   allTables,
+	} {
+		dupesInSection := duplicatesInSlice(sectionValues)
+		messages[sectionTitle] = dupesInSection
+		if len(dupesInSection) > 0 {
+			hasErrors = true
+		}
+	}
+
+	return messages, hasErrors
+}
+
 func (config *Config) GetDumpFullPath() string {
 	return path.Join(config.Output.Directory, config.GetDumpFileName())
 }
@@ -143,35 +174,4 @@ func (config *DatabaseConfig) GetMysqlConfigDSN() string {
 		mysqlConfig.Addr = config.Socket
 	}
 	return mysqlConfig.FormatDSN()
-}
-
-func ValidateConfig() (map[string][]string, bool) {
-	hasErrors := false
-	messages := make(map[string][]string, 0)
-
-	tablesToObfuscate := make([]string, 0)
-	for t, _ := range conf.Tables.Obfuscate {
-		tablesToObfuscate = append(tablesToObfuscate, t)
-	}
-
-	allTables := make([]string, 0)
-	allTables = append(unique(tablesToObfuscate), unique(conf.Tables.Keep)...)
-	allTables = append(allTables, unique(conf.Tables.Ignore)...)
-	allTables = append(allTables, unique(conf.Tables.Truncate)...)
-
-	for sectionTitle, sectionValues := range map[string][]string{
-		"obfuscate": tablesToObfuscate,
-		"keep":      conf.Tables.Keep,
-		"ignore":    conf.Tables.Ignore,
-		"truncate":  conf.Tables.Truncate,
-		"overall":   allTables,
-	} {
-		dupesInSection := duplicatesInSlice(sectionValues)
-		messages[sectionTitle] = dupesInSection
-		if len(dupesInSection) > 0 {
-			hasErrors = true
-		}
-	}
-
-	return messages, hasErrors
 }
