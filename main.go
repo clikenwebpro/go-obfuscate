@@ -19,8 +19,10 @@ const (
 	errConfigFileInvalidMarkUp = 2
 	errOutputDirectoryMissing  = 3
 	errDBConnectionFailed      = 4
-	errDumpFileIsNotWritable   = 5
-	errConfigHasDuplicates     = 6
+	errShowTablesFailed        = 5
+	errDumpFileIsNotWritable   = 6
+	errConfigHasDuplicates     = 7
+	errConfigIncomplete        = 8
 
 	statsTemplate = `Config parsed. Found tables count:
  - to dump as is: {{.keep}}
@@ -33,6 +35,15 @@ Total: {{.total}}
 	validationTemplate = `Checking for duplicated table names...done
 {{range $k, $v := .}}{{if $v}} - {{range $v}}{{.}}{{end}} spotted multiple times in the {{$k}} section
 {{end}}{{end}}
+`
+
+	dbValidationTemplate = `Checking for missing/extra tables...done
+{{if .missedInDb}}Tables that are found in config but not in DB:
+{{range $v := .missedInDb}} - {{.}}
+{{end}}{{end -}}
+{{if .missedInConfig}}Tables that are found in DB but not in config:
+{{range .missedInConfig}} - {{.}}
+{{end}}{{end -}}
 `
 )
 
@@ -59,6 +70,25 @@ func main() {
 		os.Exit(errDBConnectionFailed)
 	}
 
+	allConfigTables := conf.GetAllUniqueTableNames()
+	allDbTables, err := mysqldump.ShowTables(db)
+	if err != nil {
+		fmt.Println("Error getting database table list:", err)
+		os.Exit(errShowTablesFailed)
+	}
+	diff, diff2 := difference(allConfigTables, allDbTables)
+	dbValTmpl, err := template.New("dbValidation").Parse(dbValidationTemplate)
+	if err == nil {
+		dbValTmpl.Execute(os.Stdout, map[string][]string{
+			"missedInDb":     diff,
+			"missedInConfig": diff2,
+		})
+	}
+	if len(diff) > 0 || len(diff2) > 0 {
+		fmt.Println("Please fix the reported errors in your config file before proceeding")
+		os.Exit(errConfigIncomplete)
+	}
+
 	// Register database with mysqldump
 	dumper, err := mysqldump.Register(db, conf)
 	if err != nil {
@@ -67,9 +97,8 @@ func main() {
 	}
 
 	// TODO: add to config support of	dumper.LockTables = true
-	// Dump database to file
-	var err2 = dumper.Dump()
-	if err2 != nil {
+	err = dumper.Dump()
+	if err != nil {
 		fmt.Println("Error dumping:", err)
 		return
 	}
@@ -116,10 +145,9 @@ func loadConfig() {
 		valTmpl.Execute(os.Stdout, messages)
 	}
 	if hasErrors {
-		fmt.Println("Please fix the reported errors before proceeding")
+		fmt.Println("Please fix the reported errors in your config file before proceeding")
 		os.Exit(errConfigHasDuplicates)
 	}
-	// TODO: revalidate config after DB connection is done to make sure it has the same tables as DB and show missing/extra tables if any
 }
 
 func prepareFS() {
@@ -156,4 +184,32 @@ func exists(p string) (bool, os.FileInfo) {
 		return false, nil
 	}
 	return true, fi
+}
+
+func difference(slice1 []string, slice2 []string) ([]string, []string) {
+	diff := make(map[int][]string, 0)
+
+	// Loop two times, first to find slice1 strings not in slice2,
+	// second loop to find slice2 strings not in slice1
+	for i := 0; i < 2; i++ {
+		for _, s1 := range slice1 {
+			found := false
+			for _, s2 := range slice2 {
+				if s1 == s2 {
+					found = true
+					break
+				}
+			}
+			// String not found. We add it to return slice
+			if !found {
+				diff[i] = append(diff[i], s1)
+			}
+		}
+		// Swap the slices, only if it was the first loop
+		if i == 0 {
+			slice1, slice2 = slice2, slice1
+		}
+	}
+
+	return diff[0], diff[1]
 }

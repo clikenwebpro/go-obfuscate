@@ -2,6 +2,7 @@ package mysqldump
 
 import (
 	"database/sql"
+	"fmt"
 	"io"
 	"os"
 
@@ -49,4 +50,28 @@ func (d *Data) Close() error {
 		out.Close()
 	}
 	return d.Connection.Close()
+}
+
+func ShowTables(db *sql.DB) ([]string, error) {
+	rows0, err := db.Query("show tables")
+	if err != nil {
+		return nil, err
+	}
+	defer rows0.Close()
+
+	n := 0
+	tables := make([]string, 0)
+	for rows0.Next() {
+		var s string
+
+		n++
+		err = rows0.Scan(&s)
+		if err != nil {
+			return nil, fmt.Errorf("rows.Scan %d failed: %v", n, err)
+		}
+
+		tables = append(tables, s)
+	}
+
+	return tables, nil
 }

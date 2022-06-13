@@ -118,11 +118,7 @@ func (config *Config) ValidateConfig() (map[string][]string, bool) {
 		tablesToObfuscate = append(tablesToObfuscate, t)
 	}
 
-	allTables := make([]string, 0)
-	allTables = append(unique(tablesToObfuscate), unique(config.Tables.Keep)...)
-	allTables = append(allTables, unique(config.Tables.Ignore)...)
-	allTables = append(allTables, unique(config.Tables.Truncate)...)
-
+	allTables := config.GetAllUniqueTableNames()
 	for sectionTitle, sectionValues := range map[string][]string{
 		"obfuscate": tablesToObfuscate,
 		"keep":      config.Tables.Keep,
@@ -153,13 +149,6 @@ func (config *Config) GetDumpFileName() string {
 	return dumpFileName
 }
 
-func (config *Config) now() time.Time {
-	if config.clock == nil {
-		return time.Now()
-	}
-	return config.clock()
-}
-
 func (config *DatabaseConfig) GetMysqlConfigDSN() string {
 	mysqlConfig := mysql.NewConfig()
 	mysqlConfig.DBName = config.DatabaseName
@@ -174,4 +163,27 @@ func (config *DatabaseConfig) GetMysqlConfigDSN() string {
 		mysqlConfig.Addr = config.Socket
 	}
 	return mysqlConfig.FormatDSN()
+}
+
+func (config *Config) GetAllUniqueTableNames() []string {
+	allTables := make([]string, 0)
+	allTables = append(unique(config.getObfuscatedTableNames()), unique(config.Tables.Keep)...)
+	allTables = append(allTables, unique(config.Tables.Ignore)...)
+	allTables = append(allTables, unique(config.Tables.Truncate)...)
+	return allTables
+}
+
+func (config *Config) getObfuscatedTableNames() []string {
+	tablesToObfuscate := make([]string, 0)
+	for t, _ := range config.Tables.Obfuscate {
+		tablesToObfuscate = append(tablesToObfuscate, t)
+	}
+	return tablesToObfuscate
+}
+
+func (config *Config) now() time.Time {
+	if config.clock == nil {
+		return time.Now()
+	}
+	return config.clock()
 }
