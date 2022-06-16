@@ -23,6 +23,7 @@ const (
 	errDumpFileIsNotWritable   = 6
 	errConfigHasDuplicates     = 7
 	errConfigIncomplete        = 8
+	errConfigHasUnknownType    = 9
 
 	statsTemplate = `Config parsed. Found tables count:
  - to dump as is: {{.keep}}
@@ -30,6 +31,7 @@ const (
  - to truncate: {{.truncate}}
  - to obfuscate: {{.obfuscate}}
 Total: {{.total}}
+
 `
 
 	validationTemplate = `Checking for duplicated table names...done
@@ -43,7 +45,12 @@ Total: {{.total}}
 {{end}}{{end -}}
 {{if .missedInConfig}}Tables that are found in DB but not in config:
 {{range .missedInConfig}} - {{.}}
-{{end}}{{end -}}
+{{end}}{{end}}
+`
+
+	fakerValidationTemplate = `Checking obfuscated columns type...done
+{{range $v := .}} - Column {{index $v 1}} in the table {{index $v 0}} has unknown or missing type
+{{end}}
 `
 )
 
@@ -65,17 +72,12 @@ func main() {
 	}
 
 	err = db.Ping()
-	if err != nil {
-		fmt.Println("Please validate DB credentials.\n", err)
-		os.Exit(errDBConnectionFailed)
-	}
+	exitOnError(err != nil, errDBConnectionFailed, fmt.Sprintf("Please validate DB credentials.\n%v", err))
 
 	allConfigTables := conf.GetAllUniqueTableNames()
 	allDbTables, err := mysqldump.ShowTables(db)
-	if err != nil {
-		fmt.Println("Error getting database table list:", err)
-		os.Exit(errShowTablesFailed)
-	}
+	exitOnError(err != nil, errShowTablesFailed, fmt.Sprintf("Error getting database table list: %v", err))
+
 	diff, diff2 := difference(allConfigTables, allDbTables)
 	dbValTmpl, err := template.New("dbValidation").Parse(dbValidationTemplate)
 	if err == nil {
@@ -84,17 +86,11 @@ func main() {
 			"missedInConfig": diff2,
 		})
 	}
-	if len(diff) > 0 || len(diff2) > 0 {
-		fmt.Println("Please fix the reported errors in your config file before proceeding")
-		os.Exit(errConfigIncomplete)
-	}
+	exitOnError(len(diff) > 0 || len(diff2) > 0, errConfigIncomplete, "Please fix the reported errors in your config file before proceeding")
 
 	// Register database with mysqldump
 	dumper, err := mysqldump.Register(db, conf)
-	if err != nil {
-		fmt.Println("Error registering database:", err)
-		os.Exit(errDumpFileIsNotWritable)
-	}
+	exitOnError(err != nil, errDumpFileIsNotWritable, fmt.Sprintf("Error registering database: %v", err))
 
 	// TODO: add to config support of	dumper.LockTables = true
 	err = dumper.Dump()
@@ -116,17 +112,12 @@ func loadConfig() {
 	flag.StringVar(&configFilePath, "c", "./config.yaml", "MySQL connection details(./config.yaml)")
 	flag.Parse()
 	evaledPath, _ := filepath.EvalSymlinks(configFilePath)
-	if _, err := os.Stat(evaledPath); errors.Is(err, os.ErrNotExist) {
-		fmt.Println("Config file does not exist:", configFilePath, "")
-		os.Exit(errConfigFileNotFound)
-	}
+	_, err := os.Stat(evaledPath)
+	exitOnError(errors.Is(err, os.ErrNotExist), errConfigFileNotFound, fmt.Sprintf("Config file does not exist: %s", configFilePath))
 
 	fmt.Println("Using config file:", evaledPath)
-	if conf, error = config.GetConf(filepath.Dir(evaledPath), filepath.Base(evaledPath)); error != nil {
-		fmt.Println("Config file contains invalid YAML markup:")
-		fmt.Printf("%v\n", error)
-		os.Exit(errConfigFileInvalidMarkUp)
-	}
+	conf, error = config.GetConf(filepath.Dir(evaledPath), filepath.Base(evaledPath))
+	exitOnError(error != nil, errConfigFileInvalidMarkUp, fmt.Sprintf("Config file contains invalid YAML markup:\n%v\n", error))
 
 	statsTmpl, err := template.New("statistics").Parse(statsTemplate)
 	if err == nil {
@@ -138,25 +129,28 @@ func loadConfig() {
 			"total":     len(conf.Tables.Keep) + len(conf.Tables.Ignore) + len(conf.Tables.Truncate) + len(conf.Tables.Obfuscate),
 		})
 	}
+
 	// Sanity check 1: each table name should be unique across all lists
 	messages, hasErrors := conf.ValidateConfig()
 	valTmpl, err := template.New("validation").Parse(validationTemplate)
 	if err == nil {
 		valTmpl.Execute(os.Stdout, messages)
 	}
-	if hasErrors {
-		fmt.Println("Please fix the reported errors in your config file before proceeding")
-		os.Exit(errConfigHasDuplicates)
+	exitOnError(hasErrors, errConfigHasDuplicates, "Please fix the reported errors in your config file before proceeding")
+
+	// Sanity check 2: each obfuscated column type should be known
+	unknown, hasErrors := conf.ValidateObfuscateSection()
+	fakerTmpl, err := template.New("faker").Parse(fakerValidationTemplate)
+	if err == nil {
+		fakerTmpl.Execute(os.Stdout, unknown)
 	}
+	exitOnError(hasErrors, errConfigHasDuplicates, "Please fix the reported errors in your config file before proceeding")
 }
 
 func prepareFS() {
 	// Dump dir exists
 	os.MkdirAll(conf.Output.Directory, 0777)
-	if !isDir(conf.Output.Directory) {
-		fmt.Println("Could not create directory ", conf.Output.Directory)
-		os.Exit(errOutputDirectoryMissing)
-	}
+	exitOnError(!isDir(conf.Output.Directory), errOutputDirectoryMissing, fmt.Sprintf("Could not create directory %s\n", conf.Output.Directory))
 
 	// Dump file does not exist
 	p := conf.GetDumpFullPath()
@@ -212,4 +206,11 @@ func difference(slice1 []string, slice2 []string) ([]string, []string) {
 	}
 
 	return diff[0], diff[1]
+}
+
+func exitOnError(hasErrors bool, exitCode int, message string) {
+	if hasErrors {
+		fmt.Println(message)
+		os.Exit(exitCode)
+	}
 }

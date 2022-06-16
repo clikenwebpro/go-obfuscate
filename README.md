@@ -28,6 +28,7 @@ The file has three main sections:
 ## Sanity checks
 Before the creation of the dump the following checks are done:
 - each subsection of `tables` is checked separately for duplicated table names inside it to ensure that the same table is not listed in the subsection multiple times.
+- all columns that are going to be obfuscated are checked to have a known type (name, email, address, etc)
 - all subsections of `tables` are checked for duplicated table names to ensure that the same table is not listed in the multiple subsections
 - all tables listed in the configuration file are checked for existence in DB to prevent typos  in the table names
 - all tables that are available in the DB are checked for presence in the `tables` section of the configuration file to ensure that the strategy is clear

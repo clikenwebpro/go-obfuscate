@@ -136,6 +136,20 @@ func (config *Config) ValidateConfig() (map[string][]string, bool) {
 	return messages, hasErrors
 }
 
+func (config *Config) ValidateObfuscateSection() ([][]string, bool) {
+	hasErrors := false
+	messages := make([][]string, 0)
+	for t, _ := range config.Tables.Obfuscate {
+		for c, _ := range config.Tables.Obfuscate[t].(map[string]interface{}) {
+			if GetColumnFaker(t, c) == nil {
+				messages = append(messages, []string{t, c})
+				hasErrors = true
+			}
+		}
+	}
+	return messages, hasErrors
+}
+
 func (config *Config) GetDumpFullPath() string {
 	return path.Join(config.Output.Directory, config.GetDumpFileName())
 }
