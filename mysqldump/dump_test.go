@@ -9,6 +9,7 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/vicdeo/go-obfuscate/config"
 )
 
 func getMockData() (data *Data, mock sqlmock.Sqlmock, err error) {
@@ -42,8 +43,13 @@ func c(name string, v interface{}) *sqlmock.Column {
 func TestGetTablesOk(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
-
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
 	rows := sqlmock.NewRows([]string{"Tables_in_Testdb"}).
 		AddRow("Test_Table_1").
 		AddRow("Test_Table_2")
@@ -62,7 +68,13 @@ func TestGetTablesOk(t *testing.T) {
 func TestIgnoreTablesOk(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
 
 	rows := sqlmock.NewRows([]string{"Tables_in_Testdb"}).
 		AddRow("Test_Table_1").
@@ -84,8 +96,18 @@ func TestIgnoreTablesOk(t *testing.T) {
 func TestGetTablesNil(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
-
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+		shouldDumpData = config.ShouldDumpData
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
+	shouldDumpData = func(tableName string) bool {
+		return true
+	}
+	
 	rows := sqlmock.NewRows([]string{"Tables_in_Testdb"}).
 		AddRow("Test_Table_1").
 		AddRow(nil).
@@ -164,7 +186,17 @@ func mockTableSelect(mock sqlmock.Sqlmock, name string) {
 func TestCreateTableRowValues(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+		shouldDumpData = config.ShouldDumpData
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
+	shouldDumpData = func(tableName string) bool {
+		return true
+	}
 
 	mockTableSelect(mock, "test")
 
@@ -184,7 +216,17 @@ func TestCreateTableRowValues(t *testing.T) {
 func TestCreateTableValuesSteam(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+		shouldDumpData = config.ShouldDumpData
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
+	shouldDumpData = func(tableName string) bool {
+		return true
+	}
 
 	mockTableSelect(mock, "test")
 
@@ -202,7 +244,17 @@ func TestCreateTableValuesSteam(t *testing.T) {
 func TestCreateTableValuesSteamSmallPackets(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+		shouldDumpData = config.ShouldDumpData
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
+	shouldDumpData = func(tableName string) bool {
+		return true
+	}
 
 	mockTableSelect(mock, "test")
 
@@ -221,7 +273,17 @@ func TestCreateTableValuesSteamSmallPackets(t *testing.T) {
 func TestCreateTableAllValuesWithNil(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+		shouldDumpData = config.ShouldDumpData
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
+	shouldDumpData = func(tableName string) bool {
+		return true
+	}
 
 	cols := sqlmock.NewRows([]string{"Field", "Extra"}).
 		AddRow("id", "").
@@ -256,7 +318,17 @@ func TestCreateTableAllValuesWithNil(t *testing.T) {
 func TestCreateTableOk(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+		shouldDumpData = config.ShouldDumpData
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
+	shouldDumpData = func(tableName string) bool {
+		return true
+	}
 
 	createTableRows := sqlmock.NewRows([]string{"Table", "Create Table"}).
 		AddRow("Test_Table", "CREATE TABLE 'Test_Table' (`id` int(11) NOT NULL AUTO_INCREMENT,`s` char(60) DEFAULT NULL, PRIMARY KEY (`id`))ENGINE=InnoDB DEFAULT CHARSET=latin1")
@@ -315,7 +387,17 @@ UNLOCK TABLES;
 func TestCreateTableOkSmallPackets(t *testing.T) {
 	data, mock, err := getMockData()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
-	defer data.Close()
+	defer func() {
+		data.Close()
+		getIsIgnoredtable = config.IsIgnoredTable
+		shouldDumpData = config.ShouldDumpData
+	}()
+	getIsIgnoredtable = func(tableName string) bool {
+		return false
+	}
+	shouldDumpData = func(tableName string) bool {
+		return true
+	}
 
 	createTableRows := sqlmock.NewRows([]string{"Table", "Create Table"}).
 		AddRow("Test_Table", "CREATE TABLE 'Test_Table' (`id` int(11) NOT NULL AUTO_INCREMENT,`s` char(60) DEFAULT NULL, PRIMARY KEY (`id`))ENGINE=InnoDB DEFAULT CHARSET=latin1")

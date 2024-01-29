@@ -264,8 +264,9 @@ func (data *Data) getTables() ([]string, error) {
 	return tables, rows.Err()
 }
 
+var getIsIgnoredtable = config.IsIgnoredTable
 func (data *Data) isIgnoredTable(name string) bool {
-	if config.IsIgnoredTable(name) {
+	if getIsIgnoredtable(name) {
 		return true
 	}
 	for _, item := range data.IgnoreTables {
@@ -363,6 +364,7 @@ func (table *table) columnsList() string {
 	return "`" + strings.Join(table.cols, "`, `") + "`"
 }
 
+var shouldDumpData = config.ShouldDumpData
 func (table *table) Init() error {
 	if len(table.values) != 0 {
 		return errors.New("can't init twice")
@@ -379,7 +381,7 @@ func (table *table) Init() error {
 
 	var err error
 	// TODO: Dirty! Redo
-	if config.ShouldDumpData(table.Name) {
+	if shouldDumpData(table.Name) {
 		table.rows, err = table.data.tx.Query("SELECT " + table.columnsList() + " FROM " + table.NameEsc())
 		if err != nil {
 			return err
