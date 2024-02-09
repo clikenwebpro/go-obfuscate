@@ -1,0 +1,37 @@
+name: "Buid executable"
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  call-workflow-passing-data:
+  - uses: VicDeo/go-obfuscate/.github/workflows/test.yml@master
+  
+  build:
+    env:
+      APP_NAME="go-obfuscate"
+      GO_ARCH="amd64"
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            GOOS: linux
+            artifact: go-obfuscate.linux.amd64 
+          - os: windows-latest
+            GOOS: windows
+            artifact: go-obfuscate.exe 
+          - os: macos-latest
+            GOOS: darwin
+            artifact: go-obfuscate.macos.amd64 
+            
+    runs-on: ${{ matrix.os }}    
+
+    - name: Build for ${{ matrix.os }}
+      run: GOOS={{ matrix.GOOS }} GOARCH=$GO_ARCH go build -o {{ matrix.artifact }}
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: go-obfuscate-artifacts
+        path: |
+          {{ matrix.artifact }}
