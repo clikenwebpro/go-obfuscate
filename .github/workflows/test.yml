@@ -3,9 +3,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
     paths-ignore:
       - 'README.md'
-  
+
+
+
 jobs:
   test:
     runs-on: ubuntu-latest
