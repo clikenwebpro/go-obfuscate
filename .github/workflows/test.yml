@@ -3,9 +3,9 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-  workflow_call:
     paths-ignore:
       - 'README.md'
+  workflow_call:
 
 
 
