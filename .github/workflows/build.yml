@@ -1,16 +1,14 @@
-name: "Buid executable"
-
+name: "Build executable"
 on:
   workflow_dispatch:
   
 jobs:
   call-workflow-passing-data:
-  - uses: VicDeo/go-obfuscate/.github/workflows/test.yml@master
-  
+    uses: VicDeo/go-obfuscate/.github/workflows/test.yml@master
+
   build:
     env:
-      APP_NAME="go-obfuscate"
-      GO_ARCH="amd64"
+      GO_VERSION="1.21.x"
     strategy:
       matrix:
         include:
@@ -23,15 +21,23 @@ jobs:
           - os: macos-latest
             GOOS: darwin
             artifact: go-obfuscate.macos.amd64 
-            
-    runs-on: ${{ matrix.os }}    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go 
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.x'
+          
+      - name: Install dependencies
+        run: go get .
+      - name: Build for ${{ matrix.os }}
+        run: GOOS="{{ matrix.GOOS }}" GOARCH="amd64" go build -o {{ matrix.artifact }}
 
-    - name: Build for ${{ matrix.os }}
-      run: GOOS={{ matrix.GOOS }} GOARCH=$GO_ARCH go build -o {{ matrix.artifact }}
-
-    - name: Archive artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: go-obfuscate-artifacts
-        path: |
-          {{ matrix.artifact }}
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: go-obfuscate-artifacts
+          path: |
+            {{ matrix.artifact }}
