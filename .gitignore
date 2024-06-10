@@ -1,4 +1,5 @@
 /config.yaml
 /dumps/*
 /go-obfuscate
+.idea
 

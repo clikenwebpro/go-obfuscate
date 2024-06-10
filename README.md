@@ -1,4 +1,18 @@
 # go-obfuscate
+
+## Installation et usage
+Ce projet a été forké et j'ai gardé le readme initial qui est toute la suite mais vous n'aurez pas besoin de lire toute la suite.
+Il est utile surtout pour obfusquer une bdd locale de prod. de Domino afin de la partager.
+Pour générer une bdd avec des données obfusquées : 
+* installer go correspondant à votre OS
+* cloner ce repos
+* lancer votre instance dockerisée de domino avec une BDD de prod.
+* récupérer le fichier de config.yaml avec hjacquir
+* lancer la commande : ``go run .``
+* le fichier de dump sera généré dans le répertoire `dumps`
+* pour recréer votre bdd de Domino avec les données obfusquées utiliser la commande : ``mysql -u root -proot domino < dump.sql``
+**Attention pour récréer la bdd si vous devez ajouter dans le fichier sql la directive : ``SET GLOBAL max_allowed_packet=3073741824;`` sinon vous aurez une erreur de typ : ERROR 2006 (HY000) at line 4860: MySQL server has gone away.**
+
 Welcome to the world of a mysqldump-alike tool that allows to produce a customized dump files on-the-fly. This includes:
 - skipping tables from dumping
 - truncating tables after the dump is applied
